@@ -2,16 +2,16 @@ import time
 
 import h5py
 import numpy as np
+import scipy.io
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as Data
+import visdom
 
 import bestmodel
 import mkdir
-import scipy.io
-import visdom
 
 torch.manual_seed(1337)
 np.random.seed(1337)
@@ -28,8 +28,8 @@ mkpath = 'model/model%s' % save_model_time
 mkdir.mkdir(mkpath)
 
 print('starting loading the data')
-np_valid_data = scipy.io.loadmat('data/valid.mat')
-np_train_data = h5py.File('data/train.mat', 'r')
+np_valid_data = scipy.io.loadmat('../data/valid.mat')
+np_train_data = h5py.File('../data/train.mat', 'r')
 
 validX_data = torch.FloatTensor(np_valid_data['validxdata'])
 validY_data = torch.FloatTensor(np_valid_data['validdata'])
