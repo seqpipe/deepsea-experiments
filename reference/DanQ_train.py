@@ -1,8 +1,7 @@
+import os
 import time
 
-import h5py
 import numpy as np
-import scipy.io
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,12 +10,9 @@ import torch.utils.data as Data
 import visdom
 
 import bestmodel
-import mkdir
 
 torch.manual_seed(1337)
 np.random.seed(1337)
-torch.cuda.manual_seed(1337)
-torch.backends.cudnn.benchmark = True
 
 # Hyper Parameters
 EPOCH = 60
@@ -24,29 +20,32 @@ BATCH_SIZE = 100
 LR = 0.001
 save_model_time = '0525'
 
-mkpath = 'model/model%s' % save_model_time
-mkdir.mkdir(mkpath)
+try:
+    os.mkdir('model')
+    os.mkdir('model/model%s' % save_model_time)
+except FileExistsError:
+    pass
 
 print('starting loading the data')
-np_valid_data = scipy.io.loadmat('../data/valid.mat')
-np_train_data = h5py.File('../data/train.mat', 'r')
 
-validX_data = torch.FloatTensor(np_valid_data['validxdata'])
-validY_data = torch.FloatTensor(np_valid_data['validdata'])
+trainX_data = torch.FloatTensor(
+    np.load('../data/train_sets/X_train_set.1.npy'))
+trainY_data = torch.FloatTensor(
+    np.load('../data/train_sets/y_train_set.1.npy'))
 
-trainX_data = torch.FloatTensor(np_train_data['trainxdata'])
-trainY_data = torch.FloatTensor(np_train_data['traindata'])
+validX_data = torch.FloatTensor(np.load('../data/X_valid.npy'))
+validY_data = torch.FloatTensor(np.load('../data/y_valid.npy'))
 
-params = {'batch_size': 100, 'num_workers': 2}
-
-valid_loader = Data.DataLoader(dataset=Data.TensorDataset(
-    validX_data, validY_data),
-                               shuffle=False,
-                               **params)
+params = {'batch_size': 100, 'num_workers': 0}
 
 train_loader = Data.DataLoader(dataset=Data.TensorDataset(
     trainX_data, trainY_data),
                                shuffle=True,
+                               **params)
+
+valid_loader = Data.DataLoader(dataset=Data.TensorDataset(
+    validX_data, validY_data),
+                               shuffle=False,
                                **params)
 
 vis = visdom.Visdom(env='DanQ')
@@ -74,8 +73,6 @@ class DanQ(nn.Module):
     def __init__(self, ):
         super(DanQ, self).__init__()
         self.Conv1 = nn.Conv1d(in_channels=4, out_channels=320, kernel_size=26)
-        # self.Conv1.weight.data = torch.Tensor(np.load('conv1_weights.npy'))
-        # self.Conv1.bias.data = torch.Tensor(np.load('conv1_bias.npy'))
         self.Maxpool = nn.MaxPool1d(kernel_size=13, stride=13)
         self.Drop1 = nn.Dropout(p=0.2)
         self.BiLSTM = nn.LSTM(input_size=320,
@@ -94,11 +91,11 @@ class DanQ(nn.Module):
         x = self.Drop1(x)
         x_x = torch.transpose(x, 1, 2)
         x, (h_n, h_c) = self.BiLSTM(x_x)
-        # x, h_n = self.BiGRU(x_x)
         x = x.contiguous().view(-1, 75 * 640)
         x = self.Linear1(x)
         x = F.relu(x)
         x = self.Linear2(x)
+
         return x
 
 

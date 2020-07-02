@@ -133,4 +133,6 @@ dmypy.json
 .DS_Store
 
 # Data
-/data/*.mat
+/data/**/*.mat
+/data/**/*.npy
+/data/**/*.tar.gz
