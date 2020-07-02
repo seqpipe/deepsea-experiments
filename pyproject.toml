@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "deepsea-experiments"
+version = "0.1.0"
+description = "DeepSEA Experiments"
+authors = ["Victor Velev <victorivelev@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.19.0"
+torch = "^1.5.1"
+h5py = "^2.10.0"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^3.8.3"
+yapf = "^0.30.0"
+jupyter = "^1.0.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
