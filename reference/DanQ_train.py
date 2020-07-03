@@ -16,7 +16,7 @@ np.random.seed(1337)
 
 # Hyper Parameters
 EPOCH = 60
-BATCH_SIZE = 100
+BATCH_SIZE = 32
 LR = 0.001
 save_model_time = '0525'
 
@@ -36,7 +36,7 @@ trainY_data = torch.FloatTensor(
 validX_data = torch.FloatTensor(np.load('../data/X_valid.npy'))
 validY_data = torch.FloatTensor(np.load('../data/y_valid.npy'))
 
-params = {'batch_size': 100, 'num_workers': 0}
+params = {'batch_size': BATCH_SIZE, 'num_workers': 0}
 
 train_loader = Data.DataLoader(dataset=Data.TensorDataset(
     trainX_data, trainY_data),
