@@ -14,9 +14,12 @@ import bestmodel
 torch.manual_seed(1337)
 np.random.seed(1337)
 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 # Hyper Parameters
 EPOCH = 60
-BATCH_SIZE = 32
+BATCH_SIZE = 100
 LR = 0.001
 save_model_time = '0525'
 
@@ -28,15 +31,13 @@ except FileExistsError:
 
 print('starting loading the data')
 
-trainX_data = torch.FloatTensor(
-    np.load('../data/train_sets/X_train_set.1.npy'))
-trainY_data = torch.FloatTensor(
-    np.load('../data/train_sets/y_train_set.1.npy'))
+trainX_data = torch.FloatTensor(np.load('../data/X_train.npy'))
+trainY_data = torch.FloatTensor(np.load('../data/y_train.npy'))
 
 validX_data = torch.FloatTensor(np.load('../data/X_valid.npy'))
 validY_data = torch.FloatTensor(np.load('../data/y_valid.npy'))
 
-params = {'batch_size': BATCH_SIZE, 'num_workers': 0}
+params = {'batch_size': BATCH_SIZE, 'num_workers': 2}
 
 train_loader = Data.DataLoader(dataset=Data.TensorDataset(
     trainX_data, trainY_data),
@@ -100,6 +101,13 @@ class DanQ(nn.Module):
 
 
 danq = DanQ()
+
+try:
+    danq.load_state_dict(torch.load('./danq_net_params_2.pkl'))
+    print('warm start')
+except Exception:
+    pass
+
 danq.cuda()
 print(danq)
 

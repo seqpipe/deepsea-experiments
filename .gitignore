@@ -136,3 +136,7 @@ dmypy.json
 /data/**/*.mat
 /data/**/*.npy
 /data/**/*.tar.gz
+
+# Models
+**/*.pkl
+
