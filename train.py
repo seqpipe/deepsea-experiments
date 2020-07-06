@@ -8,8 +8,7 @@ import torch.optim as optim
 import visdom
 from torch.utils.data import DataLoader, TensorDataset
 
-from neuralsea.neuralsea import NeuralSEA
-from neuralsea.res_se_block import ResSEBlock
+from neuralsea import BasicSEBlock, NeuralSEA
 
 ###############################################################################
 # Train Settings
@@ -88,9 +87,11 @@ if torch.cuda.is_available():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+# CUDA availability check
 if args.cuda and not torch.cuda.is_available():
     raise Exception('No GPU found, please run without: --cuda')
 
+# Setup Visdom if requested
 if args.visdom:
     vis = visdom.Visdom(env='NeuralSEA')
 
@@ -115,7 +116,7 @@ if args.visdom:
                            'title': 'Valid Accuracy - Epoch',
                        })
 
-# Set device
+# Setup device
 device = torch.device('cuda' if args.cuda else 'cpu')
 print('Device:', device)
 print('=' * 15)
@@ -148,7 +149,7 @@ if args.warm_start != '':
     print('=' * 15)
     net = torch.load(args.warm_start).to(device)
 else:
-    net = NeuralSEA(ResSEBlock, args.num_blocks).to(device)
+    net = NeuralSEA(BasicSEBlock, args.num_blocks).to(device)
 
 print('=' * 30)
 print(net)
@@ -183,7 +184,7 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        if i % 1000 == 0:
+        if i % 10000 == 0:
             print(f'===> Epoch[{epoch}]({i}/{len(train_set_loader)}): \
                     Loss: {round(loss.item(), 4)}')
 
