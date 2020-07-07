@@ -125,8 +125,8 @@ print('=' * 15)
 # Train
 print('Load Train set')
 print('=' * 15)
-train_set = TensorDataset(torch.FloatTensor(np.load(args.X_train)),
-                          torch.FloatTensor(np.load(args.y_train)))
+train_set = TensorDataset(torch.from_numpy(np.load(args.X_train)),
+                          torch.from_numpy(np.load(args.y_train)))
 train_set_loader = DataLoader(dataset=train_set,
                               batch_size=args.batch_size,
                               num_workers=args.threads,
@@ -135,8 +135,8 @@ train_set_loader = DataLoader(dataset=train_set,
 # Valid
 print('Load Valid set')
 print('=' * 15)
-valid_set = TensorDataset(torch.FloatTensor(np.load(args.X_valid)),
-                          torch.FloatTensor(np.load(args.y_valid)))
+valid_set = TensorDataset(torch.from_numpy(np.load(args.X_valid)),
+                          torch.from_numpy(np.load(args.y_valid)))
 valid_set_loader = DataLoader(dataset=valid_set,
                               batch_size=args.valid_batch_size,
                               num_workers=args.threads,
