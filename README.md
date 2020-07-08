@@ -1,2 +1,1 @@
-# NeuralSEA
-Neural DNA Sequence Analyzer
+# DeepSEA Experiments

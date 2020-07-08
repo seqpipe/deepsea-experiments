@@ -140,3 +140,5 @@ dmypy.json
 # Models
 /models/**/*.pth
 /models/**/*.pkl
+**/*.pkl
+
