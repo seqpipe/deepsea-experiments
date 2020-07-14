@@ -15,28 +15,24 @@ from neuralsea import NeuralSEA
 parser = argparse.ArgumentParser(description='NeuralSEA training')
 parser.add_argument('--batch_size',
                     type=int,
-                    default=128,
-                    help='training batch size (default: 128)')
+                    default=100,
+                    help='training batch size (default: 100)')
 parser.add_argument('--valid_batch_size',
                     type=int,
-                    default=32,
-                    help='validating batch size (default: 32)')
+                    default=50,
+                    help='validating batch size (default: 50)')
 parser.add_argument('--epochs',
                     type=int,
                     default=100,
                     help='number of epochs to train for (default: 100)')
 parser.add_argument('--lr',
                     type=float,
-                    default=5e-4,
-                    help='learnig rate (default: 5e-4)')
-parser.add_argument('--l2',
+                    default=1e-3,
+                    help='learnig rate (default: 1e-3)')
+parser.add_argument('--weight_decay',
                     type=float,
                     default=1e-6,
-                    help='L2 (weight decay) rate (default: 1e-6)')
-parser.add_argument('--patience',
-                    type=int,
-                    default=5,
-                    help='Reduce LR On Plateau patience (default: 5)')
+                    help='weight decay rate for AdamW (default: 1e-6)')
 parser.add_argument('--warm_start',
                     type=str,
                     default='',
@@ -125,10 +121,16 @@ def setup_visdom(env):
 def setup_device(use_cuda):
     ''' Setup device '''
 
-    if use_cuda and not torch.cuda.is_available():
-        raise Exception('No GPU found, please run without: --cuda')
+    if use_cuda:
+        if not torch.cuda.is_available():
+            raise Exception('No GPU found, please run without: --cuda')
 
-    device = torch.device('cuda' if use_cuda else 'cpu')
+        torch.cuda.empty_cache()
+        device = torch.device('cuda')
+
+    else:
+        device = torch.device('cpu')
+
     print('Device:', device)
     print('=' * 15)
 
@@ -157,9 +159,9 @@ def build_net(warm_start, device):
     if warm_start != '':
         print('Warm start from network at:', warm_start)
         print('=' * 15)
-        net = torch.load(warm_start).to(device)
+        net = torch.load(warm_start, map_location=device).type(torch.float)
     else:
-        net = NeuralSEA().to(device)
+        net = NeuralSEA().to(device, dtype=torch.float)
 
     print('=' * 30)
     print(net)
@@ -177,23 +179,13 @@ def get_objective():
     return objective
 
 
-def get_optimizer(net, lr, l2):
+def get_optimizer(params, lr, weight_decay):
     ''' Get Optimizer '''
 
-    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=l2)
+    optimizer = optim.AdamW(params, lr=lr, weight_decay=weight_decay)
     print('Optimizer:', optimizer)
 
     return optimizer
-
-
-def get_lr_scheduler(optimizer, patience):
-    ''' Get LR Scheduler '''
-
-    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                        patience=patience,
-                                                        verbose=True)
-
-    return lr_scheduler
 
 
 def train(net, epoch, train_set_loader, device, objective, optimizer):
@@ -203,7 +195,8 @@ def train(net, epoch, train_set_loader, device, objective, optimizer):
     epoch_loss = 0.0
 
     for i, data in enumerate(train_set_loader, 1):
-        input, target = data[0].to(device).float(), data[1].to(device).float()
+        input, target = (data[0].to(device, dtype=torch.float),
+                         data[1].to(device, dtype=torch.float))
 
         optimizer.zero_grad()
 
@@ -216,9 +209,9 @@ def train(net, epoch, train_set_loader, device, objective, optimizer):
 
         if i % 10000 == 0:
             print(f'===> Epoch[{epoch}]({i}/{len(train_set_loader)}): \
-                    Loss: {round(loss.item(), 4)}')
+                    Loss: {round(loss.item(), 7)}')
 
-    train_loss = round(epoch_loss / len(train_set_loader), 4)
+    train_loss = round(epoch_loss / len(train_set_loader), 7)
     print(f'=====> Epoch {epoch} Completed: \
             Avg. Loss: {train_loss}')
 
@@ -234,34 +227,34 @@ def validate(net, valid_set_loader, device, objective):
 
     with torch.no_grad():
         for data in valid_set_loader:
-            input, target = (data[0].to(device).float(),
-                             data[1].to(device).float())
+            input, target = (data[0].to(device, dtype=torch.float),
+                             data[1].to(device, dtype=torch.float))
 
             output = net(input)
 
             loss = objective(output, target)
             avg_loss += loss.item()
 
-            avg_acc += (torch.sum(
-                torch.prod(target == torch.sigmoid(output).round(),
-                           dim=-1)).float() / input.shape[0]).item()
+            pred = torch.sigmoid(output).round()
+            avg_acc += (torch.sum(target.view(-1) == pred.view(-1)).float() /
+                        target.numel()).item()
 
-    valid_loss = round(avg_loss / len(valid_set_loader), 4)
-    valid_acc = round(avg_acc / len(valid_set_loader), 4)
+    valid_loss = round(avg_loss / len(valid_set_loader), 7)
+    valid_acc = round(avg_acc / len(valid_set_loader), 7)
     print(f'=======> Avg. Valid Loss: {valid_loss}\
             Avg. Valid Acc: {valid_acc}')
 
     return valid_loss, valid_acc
 
 
-def checkpoint(net, pth_dir, epoch, valid_loss):
+def checkpoint(net, pth_dir, epoch, valid_acc):
     ''' Checkpoint step '''
 
     if not os.path.exists(pth_dir):
         os.mkdir(pth_dir)
 
     path = os.path.join(pth_dir,
-                        f'neuralsea-epoch-{epoch}-loss-{valid_loss}.pth')
+                        f'neuralsea-epoch-{epoch}-acc-{valid_acc}.pth')
     torch.save(net, path)
     print(f'Checkpoint saved to {path}')
 
@@ -284,8 +277,7 @@ if __name__ == '__main__':
 
     net = build_net(args.warm_start, device)
     objective = get_objective()
-    optimizer = get_optimizer(net, args.lr, args.l2)
-    lr_scheduler = get_lr_scheduler(optimizer, args.patience)
+    optimizer = get_optimizer(net.parameters(), args.lr, args.weight_decay)
 
     # RUN
     print()
@@ -295,9 +287,8 @@ if __name__ == '__main__':
                            optimizer)
         valid_loss, valid_acc = validate(net, valid_set_loader, device,
                                          objective)
-        lr_scheduler.step(valid_loss)
 
-        checkpoint(net, args.pth_dir, epoch, valid_loss)
+        checkpoint(net, args.pth_dir, epoch, valid_acc)
         print()
 
         if args.visdom:

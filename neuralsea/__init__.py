@@ -1,6 +1,4 @@
-''' This python module implements the NeuralSEA
-neural network in PyTorch.
-
+''' This python module implements the NeuralSEA model in PyTorch
 '''
 
 from neuralsea.neuralsea import NeuralSEA
